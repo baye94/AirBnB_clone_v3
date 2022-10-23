@@ -1,36 +1,28 @@
 #!/usr/bin/python3
-"""
-module creates a route /status on any object app_views
-return: JSON: "status: OK"
+"""Creationg route for Blueprint
 """
 from api.v1.views import app_views
-from flask import jsonify
 from models import storage
-from models.amenity import Amenity
-from models.base_model import BaseModel, Base
-from models.city import City
-from models.place import Place
-from models.review import Review
-from models.state import State
-from models.user import User
-classes = {"amenities": Amenity, "cities": City, "places": Place,
-           "reviews": Review, "states": State, "users": User}
+from flask import jsonify
 
 
-@app_views.route("/status", strict_slashes=False)
-def status():
+@app_views.route('/status')
+def response():
+    """ get status ok
     """
-    Returns OK if JSON works
-    """
-    j_status = {"status": "OK"}
-    return jsonify(j_status)
+    dic = {"status": "OK"}
+    return jsonify(dic)
 
 
-@app_views.route("/stats", strict_slashes=False)
-def count_all():
+@app_views.route('/stats')
+def class_counter():
+    """ get a dictionary from count method
     """
-    Returns OK if JSON works
-    """
-    return jsonify({
-        name: storage.count(obj) for name, obj in classes.items()
-    })
+    dic = {}
+    dic["amenities"] = storage.count("Amenity")
+    dic["cities"] = storage.count("City")
+    dic["places"] = storage.count("Place")
+    dic["reviews"] = storage.count("Review")
+    dic["states"] = storage.count("State")
+    dic["users"] = storage.count("User")
+    return jsonify(dic)

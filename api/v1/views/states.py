@@ -1,95 +1,74 @@
 #!/usr/bin/python3
+""" State APIRest
 """
-module that defines API interactions for State __objects
-"""
+
 from models import storage
 from models.state import State
 from api.v1.views import app_views
 from flask import jsonify, abort, request
 
 
-@app_views.route('/states', strict_slashes=False, methods=['GET'])
-def get_states():
+@app_views.route('/states', methods=['GET'])
+def list_dict():
+    """ list of an objetc in a dict form
     """
-    defines the states route
-    Returns: list of all State objects
+    lista = []
+    dic = storage.all('State')
+    for elem in dic:
+        lista.append(dic[elem].to_dict())
+    return (jsonify(lista))
+
+
+@app_views.route('/states/<state_id>', methods=['GET', 'DELETE'])
+def state_id(state_id):
+    """ realize the specific action depending on method
     """
-    states = storage.all("State").values()
+    lista = []
+    dic = storage.all('State')
+    for elem in dic:
+        var = dic[elem].to_dict()
+        if var["id"] == state_id:
+            if request.method == 'GET':
+                return (jsonify(var))
+            elif request.method == 'DELETE':
+                aux = {}
+                dic[elem].delete()
+                storage.save()
+                return (jsonify(aux))
+    abort(404)
 
-    return jsonify([state.to_dict() for state in states])
 
-
-@app_views.route('/states/<state_id>', strict_slashes=False, methods=["GET"])
-def id_for_state(state_id):
+@app_views.route('/states', methods=['POST'])
+def add_item():
+    """ add a new item
     """
-    defines the states/<state_id> route
-    Returns: state id or 404 Error if object not linked to State object
+    if not request.json:
+        return jsonify("Not a JSON"), 400
+    else:
+        content = request.get_json()
+        if "name" not in content.keys():
+            return jsonify("Missing name"), 400
+        else:
+            new_state = State(**content)
+            new_state.save()
+            return (jsonify(new_state.to_dict()), 201)
+
+
+@app_views.route('/states/<state_id>', methods=['PUT'])
+def update_item(state_id):
+    """ update item
     """
-    a_state = storage.get("State", state_id)
-    if a_state:
-        return jsonify(a_state.to_dict())
-    return abort(404)
-
-
-@app_views.route('/states/<state_id>', strict_slashes=False,
-                 methods=['DELETE'])
-def delete_state_id(state_id):
-    """
-    defines DELETE for state objects by id
-    Returns: if successful 200 and an empty dictionary
-             404 if state_id is not linked to any State obj
-    """
-    state = storage.get("State", state_id)
-    if state:
-        storage.delete(state)
-        storage.save()
-        return jsonify({}), 200
-    return abort(404)
-
-
-@app_views.route('/states/', strict_slashes=False, methods=['POST'])
-def create_state():
-    """
-    define how to create a new state objects
-    Returns: 201 on successful creation
-             400 "Not a JSON" if HTTP body request is not valid
-             404 if state_id is not linked to any State object
-    """
-    try:
-        states = request.get_json()
-
-        if states.get("name") is None:
-            return abort(400, 'Missing name')
-    except:
-        return abort(400, 'Not a JSON')
-
-    new_state = State(**states)
-    storage.new(new_state)
-    storage.save()
-    return jsonify(new_state.to_dict()), 201
-
-
-@app_views.route('/states/<state_id>', strict_slashes=False, methods=['PUT'])
-def state_update(state_id):
-    """
-    defines how an Update to a state is made
-    Returns: 200 and the state object if successful
-             400 "Not a JSON" if HTTP body request is not valid
-             404 if state_id is not linked to any State object
-    """
-    state_data = request.get_json()
-
-    if not state_data:
-        return abort(400, 'Not a JSON')
-
-    state = storage.get("State", state_id)
-
-    if not state:
-        return abort(404)
-
-    for key, value in state_data.items():
-        if key not in ['id', 'created_at', 'updated_at']:
-            setattr(state, key, value)
-    storage.save()
-
-    return jsonify(state.to_dict()), 200
+    dic = storage.all("State")
+    for key in dic:
+        if dic[key].id == state_id:
+            if not request.json:
+                return jsonify("Not a JSON"), 400
+            else:
+                forbidden = ["id", "update_at", "created_at"]
+                content = request.get_json()
+                for k in content:
+                    if k not in forbidden:
+                        setattr(dic[key], k, content[k])
+                dic[key].save()
+                return(jsonify(dic[key].to_dict()))
+    abort(404)
