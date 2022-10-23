@@ -1,73 +1,73 @@
 #!/usr/bin/python3
+""" Place_amenities Restful API
 """
-module that defines API interactions for Places __objects
-"""
-from api.v1.views import app_views
-from models.amenity import Amenity
+
 from models import storage
-from flask import jsonify, abort
+from models.place import Place
+from models.user import User
+from models.amenity import Amenity
+from models.review import Review
+from api.v1.views import app_views
+from flask import jsonify, abort, request
+from os import getenv
+
+type = getenv('HBNB_TYPE_STORAGE')
 
 
 @app_views.route('/places/<place_id>/amenities', methods=['GET'])
-def get_place_amens(place_id):
+def am_list(place_id):
+    """ list of an objetc in dict form
     """
-    defines the places/amenities route
-    Returns: list of all Amenity objects associated with a Place obj
-    """
-    place = storage.get('Place', place_id)
-
-    if not place:
-        abort(404)
-
-    return jsonify([amenity.to_dict() for amenity in place.amenities])
+    lista = []
+    dic = storage.all('Place')
+    for elem in dic:
+        if dic[elem].id == place_id:
+            var = dic[elem].amenities
+            for i in var:
+                lista.append(i.to_dict())
+            return (jsonify(lista))
+    abort(404)
 
 
 @app_views.route('/places/<place_id>/amenities/<amenity_id>',
                  methods=['DELETE'])
-def del_place_amen(place_id, amenity_id):
+def am_delete(place_id, amenity_id):
+    """ delete the object
     """
-    defines Delete for Amenity objects
-    Returns: if successful 200 and an empty dictionary
-             404 if amenity_id is not linked to any Place obj
-             404 if Amenity is not linked to the Place prior to request
-             404 if amenity_id is not linked to any amenity obj
-    """
-    place = storage.get('Place', place_id)
-    if not place:
+    p = storage.get("Place", place_id)
+    a = storage.get("Amenity", amenity_id)
+    if not a or not p:
         abort(404)
-
-    amenity = storage.get('Amenity', amenity_id)
-    if not amenity:
-        abort(404)
-
-    if amenity not in place.amenities:
-        abort(404)
-
-    storage.delete(amenity)
-    storage.save()
-    return jsonify({}), 200
+    for elem in p.amenities:
+        if elem.id == a.id:
+            if type == 'db':
+                p.amenities.remove(a)
+            else:
+                p.amenity_ids.remove(a)
+            p.save()
+            return jsonify({})
+    abort(404)
 
 
 @app_views.route('/places/<place_id>/amenities/<amenity_id>', methods=['POST'])
-def create_place_amenity(place_id, amenity_id):
+def add_am(place_id, amenity_id):
+    """ create an amenity of a city
     """
-    defines POST for Amenity objects
-    Returns: if successful 200 and a new Amenity obj
-             404 if amenity_id is not linked to any Place obj
-             404 if Amenity is not linked to the Place prior to request
-             404 if amenity_id is not linked to any amenity obj
-    """
-    place = storage.get('Place', place_id)
-    if not place:
+    lista = []
+    obj = storage.get("Place", place_id)
+    p = storage.get("Place", place_id)
+    a = storage.get("Amenity", amenity_id)
+    print(a)
+    print("+++++++++++")
+    print(p)
+    if not a or not p:
         abort(404)
-
-    amenity = storage.get('Amenity', amenity_id)
-    if not amenity:
-        abort(404)
-
-    if amenity not in place.amenities:
-        place.amenities.append(amenity)
-        place.save()
-        return jsonify(amenity.to_dict()), 201
+    for elem in p.amenities:
+        if elem.id == a.id:
+            return jsonify(a.to_dict())
+    if type == 'db':
+        p.amenities.append(a)
     else:
-        return jsonify(amenity.to_dict()), 200
+        p.amenity_id.append(a)
+    p.save()
+    return jsonify(a.to_dict()), 201
